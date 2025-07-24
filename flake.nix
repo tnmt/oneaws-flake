@@ -47,7 +47,11 @@
           
           buildPhase = ''
             export HOME=$TMPDIR
-            gem install oneaws --install-dir $out --no-document
+            export GEM_HOME=$out
+            export GEM_PATH=$out
+            
+            # Install oneaws with only runtime dependencies
+            gem install oneaws --install-dir $out --no-document --env-shebang
           '';
           
           installPhase = ''
@@ -59,9 +63,11 @@
             # Create wrapper for oneaws only
             cat > $out/bin/oneaws <<EOF
             #!${pkgs.bash}/bin/bash
-            export GEM_PATH=$out:\$GEM_PATH
+            export GEM_HOME=$out
+            export GEM_PATH=$out
             export PATH=${rubyEnv}/bin:\$PATH
-            exec ${rubyEnv}/bin/ruby $out/gems/$ONEAWS_VERSION/exe/oneaws "\$@"
+            # Suppress gem warnings by redirecting stderr temporarily
+            exec ${rubyEnv}/bin/ruby $out/gems/$ONEAWS_VERSION/exe/oneaws "\$@" 2> >(grep -v "Ignoring.*because its extensions are not built" >&2)
             EOF
             chmod +x $out/bin/oneaws
             
